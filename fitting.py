@@ -9,40 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 
-def lnprior(theta):
-
-    at1, at2, atauin = theta
-    if 0.05 < at1 < 3.0 and 4.0 < at2 < 10.0 and 0.0 < atauin < 6.0:
-        return 0.0
-
-    return -np.inf
-
-
-def lnlikelihood(theta, feh, efeh, alh, ealh):
-
-    at1, at2, atauin = theta
-    attspi, aafehv, aaspiv, aamfv = mw(at1, at2, atauin)
-
-    lnlike = 0.
-    for i in range(len(feh)):
-        s = np.sqrt((feh[i] - aafehv[attspi>1.e-14])**2 + (alh[i] - aaspiv[attspi>1.e-14])**2)
-        ind = np.argmin(s)
-        lnlike -= np.log(2. * np.pi * efeh[i] * ealh[i])
-        lnlike -= 0.5 * np.power((feh[i] - aafehv[ind]) / efeh[i], 2)
-        lnlike -= 0.5 * np.power((alh[i] - aaspiv[ind]) / ealh[i], 2)
-        
-    return lnlike 
-
-
-def lnprob(theta, feh, efeh, alh, ealh):
-
-    lp = lnprior(theta)
-    if not np.isfinite(lp):
-        return -np.inf
-
-    return lp + lnlikelihood(theta, feh, efeh, alh, ealh)
-
-
+# Load the data
 def load_data():
 
     higha = np.genfromtxt('HIGH.txt')
@@ -65,6 +32,44 @@ def load_data():
     return data
 
 
+# Logarithm of prior
+def lnprior(theta):
+
+    at1, at2, atauin = theta
+    if 0.05 < at1 < 3.0 and 4.0 < at2 < 10.0 and 0.0 < atauin < 6.0:
+        return 0.0
+
+    return -np.inf
+
+
+# Logarithm  of likelihood
+def lnlikelihood(theta, feh, efeh, alh, ealh):
+
+    at1, at2, atauin = theta
+    attspi, aafehv, aaspiv, aamfv = mw(at1, at2, atauin)
+
+    lnlike = 0.
+    for i in range(len(feh)):
+        s = np.sqrt((feh[i] - aafehv[attspi>1.e-14])**2 + (alh[i] - aaspiv[attspi>1.e-14])**2)
+        ind = np.argmin(s)
+        lnlike -= np.log(2. * np.pi * efeh[i] * ealh[i])
+        lnlike -= 0.5 * np.power((feh[i] - aafehv[ind]) / efeh[i], 2)
+        lnlike -= 0.5 * np.power((alh[i] - aaspiv[ind]) / ealh[i], 2)
+        
+    return lnlike 
+
+
+# Logarithm of posterior probability
+def lnprob(theta, feh, efeh, alh, ealh):
+
+    lp = lnprior(theta)
+    if not np.isfinite(lp):
+        return -np.inf
+
+    return lp + lnlikelihood(theta, feh, efeh, alh, ealh)
+
+
+# Sampling of posterior using emcee
 def mcmc(ndim=3, nwalkers=100, nsteps=250, threads=6, theta0=(0.1, 8.0, 4.3)):
 
     data = load_data()
@@ -89,6 +94,7 @@ def mcmc(ndim=3, nwalkers=100, nsteps=250, threads=6, theta0=(0.1, 8.0, 4.3)):
     return
 
 
+# Plot the time series using the emcee generated chain
 def time_series(sampler_chain, fname='time_series.eps'):
     
     nwalkers, nsteps, ndim = sampler_chain.shape
@@ -137,7 +143,8 @@ def time_series(sampler_chain, fname='time_series.eps'):
     return
 
 
-def distribution(sampler_chain, nburnt=100, fname='corner.png'):
+# Make corner plot for fitting parameters using the emcee generated chain
+def distribution(sampler_chain, nburnt=100, fname='corner.eps'):
 
     nwalkers, nsteps, ndim = sampler_chain.shape
 
@@ -152,22 +159,21 @@ def distribution(sampler_chain, nburnt=100, fname='corner.png'):
     fig = corner.corner(samples, color='darkblue', labels=[r'$\tau_{D1}$', r'$\tau_{D2}$', 
                         r'$t_{\rm max}$'], quantiles=[0.16, 0.5, 0.84], show_titles=True, 
                         title_kwargs={"fontsize": 12})
-    fig.savefig("corner.eps")
+    fig.savefig(fname)
     plt.close(1)
 
     return
 
 
-def alphaH_FeH(sampler_chain, ntracks=1000, nburnt=100, fname='alphah_feh.eps'):
+# Overplot evolution curves on [alpha/Fe] vs. [Fe/H] for all the walkers at final time step
+def alphaFe_FeH(sampler_chain, fname='alphafe_feh.eps'):
 
-    print ('Making [Fe/H] vs. [alpha/H] plot...')
+    print ('Making [alpha/Fe] vs. [Fe/H] plot...')
 
     data = load_data()
 
     nwalkers, nsteps, ndim = sampler_chain.shape
-    samples = sampler_chain[:, nburnt:, :].reshape((-1, ndim))
-    nsam = samples.shape[0]
-    nind = np.random.randint(0, high=nsam, size=ntracks)
+    samples = sampler_chain[:, -1, :].reshape((-1, ndim))
 
     mpl.rc('font', family='serif')
     mpl.rc('font', serif='Times New Roman')
@@ -178,9 +184,9 @@ def alphaH_FeH(sampler_chain, ntracks=1000, nburnt=100, fname='alphah_feh.eps'):
     plt.errorbar(data[:, 0], data[:, 2], xerr=data[:, 1], yerr=data[:, 3], fmt='none', 
                  mfc='darkblue', mec='darkblue', capsize=0)
     plt.plot(data[:, 0], data[:, 2], 'o', ms=4, mfc='darkblue', mec='darkblue')
-    for i in range(ntracks):
-        at1, at2, atauin = samples[nind[i], 0], samples[nind[i], 1], samples[nind[i], 2]
-        print (('Calculating track %d of %d...') %(i+1, ntracks))
+    for i in range(nwalkers):
+        at1, at2, atauin = samples[i, 0], samples[i, 1], samples[i, 2]
+        print (('Calculating track %d of %d...') %(i+1, nwalkers))
         attspi, aafehv, aaspiv, aamfv = mw(at1, at2, atauin)
         plt.plot(aafehv[attspi>1.e-14], aaspiv[attspi>1.e-14], '-', color='mistyrose')
     print ('Done...')        
@@ -201,15 +207,15 @@ def alphaH_FeH(sampler_chain, ntracks=1000, nburnt=100, fname='alphah_feh.eps'):
 
 
 ########### Start of main program ################
-ndim, nwalkers, nsteps = 3, 100, 250
+ndim, nwalkers, nsteps = 3, 10, 10
 
 
 print (datetime.now())
 
 
 ########### Run the MCMC chain ###############
-#_ = mcmc(ndim=ndim, nwalkers=nwalkers, nsteps=nsteps, threads=6, theta0=(0.3, 8.0, 4.3))
-#print (datetime.now())
+_ = mcmc(ndim=ndim, nwalkers=nwalkers, nsteps=nsteps, threads=6, theta0=(0.3, 8.0, 4.3))
+print (datetime.now())
 
 
 ########### Load the stored chain #################
@@ -218,15 +224,15 @@ with open('chain.pkl', 'rb') as fp:
 
 
 ########### Make the time series plot ##################
-_ = time_series(sampler_chain)
+_ = time_series(sampler_chain, fname='time_series.eps')
 
 
 ########### Make the corner plot #################
-_ = distribution(sampler_chain, nburnt=160)
+_ = distribution(sampler_chain, nburnt=0, fname='corner.eps')
 
 
 ########### Make [Fe/H] vs. [alpha/H] plot ################
-_ = alphaH_FeH(sampler_chain, nburnt=160)
+_ = alphaFe_FeH(sampler_chain, fname='alphafe_feh.eps')
 
 
 print (datetime.now())
