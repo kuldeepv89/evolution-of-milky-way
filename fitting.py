@@ -70,7 +70,7 @@ def lnprob(theta, feh, efeh, alh, ealh):
 
 
 # Sampling of posterior using emcee
-def mcmc(ndim=3, nwalkers=100, nsteps=250, threads=6, theta0=(0.1, 8.0, 4.3)):
+def mcmc(ndim=3, nwalkers=100, nsteps=250, threads=6, theta0=(0.3, 8.0, 4.3)):
 
     data = load_data()
     feh, efeh, alh, ealh = data[:, 0], data[:, 1], data[:, 2], data[:, 3]
@@ -207,32 +207,36 @@ def alphaFe_FeH(sampler_chain, fname='alphafe_feh.eps'):
 
 
 ########### Start of main program ################
-ndim, nwalkers, nsteps = 3, 10, 10
-
 
 print (datetime.now())
 
+# ndim : number of free parameters
+# nwalkers : number of walkers
+# nsteps : number of steps
+# nthreads : number of threads to use in the computation
+# nburnt : number of burn-in steps
+ndim, nwalkers, nsteps, nthreads, nburnt = 3, 100, 250, 6, 160
 
-########### Run the MCMC chain ###############
-_ = mcmc(ndim=ndim, nwalkers=nwalkers, nsteps=nsteps, threads=6, theta0=(0.3, 8.0, 4.3))
+# Initial guess for the parameters
+theta0 = (0.3, 8.0, 4.3)
+
+
+
+# Run the MCMC chain
+_ = mcmc(ndim=ndim, nwalkers=nwalkers, nsteps=nsteps, threads=nthreads, theta0=theta0)
 print (datetime.now())
 
 
-########### Load the stored chain #################
+
+# Load the stored chain
 with open('chain.pkl', 'rb') as fp:
     sampler_chain = cPickle.load(fp) 
 
 
-########### Make the time series plot ##################
+
+# Make few useful plots
 _ = time_series(sampler_chain, fname='time_series.eps')
-
-
-########### Make the corner plot #################
-_ = distribution(sampler_chain, nburnt=0, fname='corner.eps')
-
-
-########### Make [Fe/H] vs. [alpha/H] plot ################
+_ = distribution(sampler_chain, nburnt=nburnt, fname='corner.eps')
 _ = alphaFe_FeH(sampler_chain, fname='alphafe_feh.eps')
-
 
 print (datetime.now())
