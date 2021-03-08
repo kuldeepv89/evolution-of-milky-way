@@ -1,6 +1,5 @@
-C     1) INFALL TIME_SCALE t1; 2) INFALL TIME_SCALE t2; 3) DELAY TMAX; 4) TIME (AGE=13.7-TIME); 5) [FE/H]; 6) [alpha/Fe]; 7) [M/H]    
-              
-      SUBROUTINE MW(at1,at2,atauin,aTTspi,aAFEHv, aaspiv,aAMFv)
+       SUBROUTINE MW(at1,at2,atauin,avnsol1,avnsol2,aSDR,aTTspi,
+     $aAFEHv,aaspiv,aAMFv)
       PARAMETER (NMAX=37) 
 
 
@@ -92,7 +91,7 @@ CCC   variabili common per il bario!!!
       include 'lettura.inc'
       include 'elementi.inc'
 CCC         
-      real at1,at2,atauin
+      real at1,at2,atauin,avnsol1,avnsol2,aSDr
       real t1,t2,tauin
       REAL TTspi,AFEHv,aspiv,AMFv
       REAL MI,MS,MU
@@ -144,7 +143,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       COMMON/COM/MAXO
       COMMON/DIE/A,B,PAMU,K2,K1,KB,KMAX2,K3,KB3
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     $R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     $R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS,APUNT,
      $RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/MAO/IVO,IPER
       COMMON/STAR/BO,TT1,ISTAR
@@ -174,7 +173,7 @@ C Parte per tener conto dei raggi cosmici.
      
        COMMON/MCMC/TTspi,AFEHv, aspiv,AMFv
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-Cf2py intent(in) at1, at2, atauin
+Cf2py intent(in) at1, at2, atauin, avnsol1, avnsol2, aSDR
 Cf2py intent(out) aTTspi, aAFEHv, aaspiv, aAMFv     
       
 
@@ -331,9 +330,12 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
          eta=13.7
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
-      RD=3.5
-      SD=64.
+         RD=3.5
+          
+          SD=47.1/(1.+(1./aSDR))
 
+c          !write(*,*) 'spito sd', sd
+       
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
 
@@ -344,7 +346,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
      $*EXP(-RF/RD))
 
       KHH=KMAX-1
-      VNSOL=1.3
+c      !VNSOL=vnsol1
 
 C     Here the program starts a loop over different 
 C           galactocentric zones 
@@ -432,23 +434,26 @@ C
          t1=at1
          t2=at2
          tauin=atauin
+         vnsol1=avnsol1
+         VNSOL=vnsol1
+         vnsol2=avnsol2
 c         T1=.1
         
 c            t2=8.
        
 c         TAUIN=4.3
-         THALO=1.0
+         THALO=tauin
 c      write(*,*) t1,t2,tauin, 'BOH'
 C     Nel solar ring, entro 1 Kpc di distanza dal piano galattico:
 C        SIGMAH=17.0    dens. sup. di massa dell'alone (+ thick disk)
 C        SIGMAD=54.0    dens. sup. di massa del disco (thin disk)
 
          SH=136.
-        
-            sigmah=8
          
+c            !sigmah=SD/aSDR
+              sigmah=47.1-SD
 
-         AR=(SIGMAH-GAS)/T1*(1.-EXP(-THALO/T1))
+         AR=(SIGMAH-GAS)/(T1*(1.-EXP(-THALO/T1)))
 
          ARO=AR
          
@@ -537,7 +542,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       COMMON/COM/MAXO
       COMMON/DIE/A,B,PAMU,K2,K1,KB,KMAX2,K3,KB3
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     $R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     $R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS,APUNT,
      $RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/MAO/IVO,IPER
       COMMON/STAR/BO,TT1,ISTAR
@@ -565,7 +570,7 @@ C Parte per tener conto dei raggi cosmici.
       
 c     !IKU=0
       THR=0.01
-      THALO=1.0
+      THALO=tauin
 c      TAUIN=4.3
       CK=1.5
       IGRAT=0
@@ -588,15 +593,16 @@ C      APUNT(1)=AR+BR
       APUNT(1)=AR
       SRT(1)=GAS
       SMS(1)=GAS
-      SG=VMR
-
+c      !SG=VMR
+      SG=47.1
 
 C Densita` superficiale di massa totale alla Gilmore.
 
       GO(1)=SRT(1)/SG
      
 c      IF ((GO(1)*SG.LE.4.0).and.(threshold.eq.1)) THEN
-c         GRAT(1)=0.
+
+c     GRAT(1)=0.
 c      ELSE
 c         GRAT(1)=2.0
 c      END IF
@@ -689,7 +695,7 @@ c      TAUIN=4.3
          BR=0.
          BRO=0.
       ELSE IF (T(I).GE.TAUIN) THEN
-         BR=(VMR-GAS)/T2*(1.-EXP(-(ETA-TAUIN)/T2))
+         BR=(VMR-GAS)/(T2*(1.-EXP(-(ETA-TAUIN)/T2)))
          BRO=BR
       END IF
 
@@ -712,7 +718,7 @@ C     $+GAS
      $1./EXP(TTAU/T2))+GAS
       SMS(I)=ARO*T1*(1.-1./EXP(T(I)/T1))+BRO*T2*(1.-
      $1./EXP(TTAU/T2))+GAS
-      GRAT(I)=VNSOL
+c      GRAT(I)=VNSOL
 
 C Pepe's SFR.
 C      RATE(I)=VNSOL*SRT(I)**EXPO
@@ -726,11 +732,11 @@ c se t < 2 Gyr (halo) entao eficiencia das SFRhalo = valor dado para GRAT(I)
 c se t >= 2 Gyr (disco) eficiencia da SFRdisco = VNSOL (valor dado no inicio)
 c note que eficiencia disco < eficiencia halo - evolucao halo e' mais rapida
 
-      if (t(i).le.tauin-0.3) then
-          vnsol=1.3
+      if (t(i).le.tauin) then
+          vnsol=vnsol1
           grat(i)=vnsol
        else
-          vnsol=1.3
+          vnsol=vnsol2
           grat(i)=vnsol
        end if
 
@@ -1196,7 +1202,7 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 C Arquivo output fis.res - dens.gas,taxa infall,dens.total,SNII,SNI
 
-c          write(80,2126)t(i),go(i)*SG,fall(i),srt(i),asnii*SG,gamma*SG
+c          write(80,2126)t(i),go(i)*SG,fall(i),stars*sg,asnii*SG,gamma*SG
 c     $  ,rsf*SG
 
 
@@ -1446,7 +1452,7 @@ C XU MASSA ESTREMO SUPERIORE
      $GASP,GPRE,FAP,FPRE,RAP,RPRE,SINT,CNORM,MI,MS,M,IMAX,
      $KMAX,I,ITER,IND,KDEMAX
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     $R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     $R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS,APUNT,
      $RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/MAO/IVO,IPER
       COMMON/PIP/GRAT,DTGRAT
@@ -1509,7 +1515,7 @@ C QUESTA SCHEDA VALE PER I VECCHI TEMPI DI VITA.
      $GASP,GPRE,FAP,FPRE,RAP,RPRE,SINT,CNORM,MI,MS,M,IMAX,
      $KMAX,I,ITER,IND,KDEMAX
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     $R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     $R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS,APUNT,
      $RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/MAO/IVO,IPER
       COMMON/PIP/GRAT,DTGRAT
@@ -1839,7 +1845,7 @@ C
      1GASP,GPRE,FAP,FPRE,RAP,RPRE,SINT,CNORM,MI,MS,M,IMAX,
      2KMAX,I,ITER,IND,KDEMAX
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     1R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     1R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS,APUNT,
      2RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/FR/XINF,FALL,FA,SG
       COMMON/SN/RR1,RR2,RR3,RR4,COST
@@ -1929,7 +1935,7 @@ c      SMSM=ARO*T1*(1.-EXP(-TM(L2)/T1))+BRO*T2*(1.-EXP(-TM(L2)/T2))+GAS
       br=0.
       bro=0.
       else
-      br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+      br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
       bro=br
       end if
       SRTM=AR*T1*(1.-EXP(-TM(L2)/T1))+BR*T2*(1.-
@@ -2056,7 +2062,7 @@ c      SMSM=ARO*T1*(1.-EXP(-TM(N3)/T1))+BRO*T2*(1.-EXP(-TM(N3)/T2))+GAS
       br=0.
       bro=0.
       else
-      br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+      br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
       bro=br
       end if
       SRTM=AR*T1*(1.-EXP(-TM(N3)/T1))+BR*T2*(1.-
@@ -2142,7 +2148,7 @@ C Il primo pezzo di integrale e` risolto...
       br=0.
       bro=0.
       else
-      br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+      br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
       bro=br
       end if
       SSTAR=AR*T1*(1.-EXP(-TSTAR/T1))+BR*T2*
@@ -5473,7 +5479,8 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       COMMON/COM/MAXO
       COMMON/DIE/A,B,PAMU,K2,K1,KB,KMAX2,K3,KB3
       COMMON/DIS/EXPO,T1,T2,ETA,RO,RS,AR,BR,RI,RD,SD,SN,AO,
-     $     R,SMO,SMC,R1,VMR,RN,VNSOL,SRT,ARO,BRO,SMS,GAS,APUNT,
+     $     R,SMO,SMC,R1,VMR,RN,VNSOL,vnsol1,vnsol2,SRT,ARO,BRO,SMS,GAS
+     $ ,APUNT,
      $     RATE,RIEST,RSCA,AC,TW,VN,THALO
       COMMON/DATA/LET
 c     !COMMON/LUCKY/IKU
@@ -5767,7 +5774,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                            br=0.
                            bro=0.
                         else
-                           br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                           br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                            bro=br
                         end if
                         
@@ -5851,7 +5858,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                      br=0.
                      bro=0.
                   else
-                     br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                     br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                      bro=br
                   end if
                   SSTAR=AR*T1*(1.-EXP(-TSTAR/T1))+BR*T2*
@@ -6092,7 +6099,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                            br=0.
                            bro=0.
                         else
-                           br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                           br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                            bro=br
                         end if
                         SRTM=AR*T1*(1.-EXP(-TMT/T1))+BR*T2*(1.-EXP(-
@@ -6305,7 +6312,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                            br=0.
                            bro=0.
                         else
-                           br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                           br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                            bro=br
                         end if
                         SRTM=AR*T1*(1.-EXP(-TMT/T1))+BR*T2*(1.-
@@ -6362,7 +6369,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                         br=0.
                         bro=0.
                      else
-                        br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                        br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                         bro=br
                      end if
                      SSTAR=AR*T1*(1.-EXP(-TSTAR/T1))+BR*T2*
@@ -6485,7 +6492,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                      br=0.
                      bro=0.
                   else
-                     br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                     br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                      bro=br
                   end if
                   SRTM=AR*T1*(1.-EXP(-TMT/T1))+BR*T2*(1.-
@@ -6542,7 +6549,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
                      br=0.
                      bro=0.
                   else
-                     br=(vmr-gas)/T2*(1.-exp(-(ETA-TAUIN)/T2))
+                     br=(vmr-gas)/(T2*(1.-exp(-(ETA-TAUIN)/T2)))
                      bro=br
                   end if
                   SSTAR=AR*T1*(1.-EXP(-TSTAR/T1))+BR*T2*
